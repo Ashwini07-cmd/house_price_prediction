@@ -22,6 +22,5 @@ Predict house prices using Python, Pandas, and Machine Learning models with clea
 1. Place train.csv in the project folder.
 2. Run the Python script:
    ```bash   
+<img src="https://github.com/Ashwini07-cmd/house_price_prediction/blob/107f8e3ea488cf438c4c040197511852f250edf7/heatmap_house%20prediction.png" alt="Image Description" width="600">
 
-   python house_price_prediction.py
-<img src= "ttps://github.com/Ashwini07-cmd/house_price_prediction/blob/107f8e3ea488cf438c4c040197511852f250edf7/heatmap_house%20prediction.png" alt="Image Description" width="600">
