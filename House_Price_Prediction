@@ -1,0 +1,154 @@
+"""
+House Price Prediction ML Project
+Author: Ashwini Fatkar
+Objective: Predict house prices using Python, Pandas, and ML models with clean preprocessing and visualizations.
+
+"""
+
+#import libraries
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.impute import KNNImputer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+
+# Load dataset
+# df=pd.read_csv("train.csv")
+csv_file = "train.csv"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(script_dir, csv_file)
+
+
+print("Loading data from:", file_path)
+df = pd.read_csv(file_path)
+print("Dataset loaded. Shape:", df.shape)
+print(df.head())
+# --Handle missing values--
+# 1: identify missing values
+missing_value=df.isnull().sum()
+missing_percentage=(df.isnull().sum()/len(df))*100
+print("column with missing values")
+missing_info=pd.DataFrame({"missing values":missing_value,"percent":missing_percentage})
+print(missing_info[missing_info["missing values"]>0])
+
+# 2: drop column that too many missing values(>40%)
+col_to_drop=["Alley","PoolQC","Fence","MiscFeature"]
+df.drop(columns=col_to_drop,inplace=True) 
+
+# 3: fill numerical missing values 
+numeric_cols=df.select_dtypes(include=["float64","int64"]).columns
+for col in numeric_cols:
+    if df[col].isnull().sum()>0:
+        #use median to avoid outliers affecting fill
+        df[col]=df[col].fillna(df[col].median())
+
+# print("Data Cleaning....")
+# df=df.replace(" ",np.nan)
+# df[numeric_cols]=pd.to_numeric(df[numeric_cols], errors="coerce")
+# df.fillna(df[numeric_cols].median(), inplace=True)
+
+# print("Cleaning Completed")
+
+# 4: fill categorical missing values
+categorical_cols=df.select_dtypes(include=["object"]).columns
+for col in categorical_cols:
+    if df[col].isnull().sum() > 0:
+        #fill with "None" if missing indicates adsence 
+        df[col]=df[col].fillna("None")      
+
+# Optional: Advanced imputation for numeric columns using KNN (if desired)
+imputer=KNNImputer(n_neighbors=5)
+df[numeric_cols]=imputer.fit_transform(df[numeric_cols])
+
+# 5: verify all missing values handled
+print("\nRemaining missing values(should be 0): ")
+print(df.isnull().sum().sum())   
+
+# display first few rows
+print("\n Sample data after handling all missing values: ")
+print(df.head)
+
+# --Train a simple model--
+# Step 1: Separate features and target
+X = df.drop(['SalePrice', 'Id'], axis=1)
+y = df['SalePrice']
+
+# Step 2: Handle categorical features using OneHotEncoding
+categorical_cols = X.select_dtypes(include=['object']).columns
+X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+
+# Step 3: Train-test split (80% train, 20% test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 4: Choose model
+# Option 1: Linear Regression
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+
+# Predictions
+y_pred_lr = lr_model.predict(X_test)
+
+# Evaluation
+print("Linear Regression Performance:")
+print("R² Score:", r2_score(y_test, y_pred_lr))
+rmse_lr = np.sqrt(mean_squared_error(y_test, y_pred_lr))
+print("Linear Regression RMSE:", rmse_lr)
+
+# Option 2: Random Forest Regressor
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Predictions
+y_pred_rf = rf_model.predict(X_test)
+
+# Evaluation
+print("\nRandom Forest Regressor Performance:")
+print("R² Score:", r2_score(y_test, y_pred_rf))
+rmse_rf = np.sqrt(mean_squared_error(y_test, y_pred_rf))
+print("Random Forest RMSE:", rmse_rf)
+
+# --visualization--
+# Actual vs Predicted(Random forest)
+plt.figure(figsize=(8,6))
+sns.scatterplot(x=y_test,y=y_pred_rf)
+plt.xlabel("Actual Saleprice")
+plt.ylabel("Predicted SalePrice")
+plt.title("Actual vs Predicted SalePrice(random Forest)")
+plt.show()
+
+#--Top 5 feature Affecting SalePrice--
+# Using Random Forest Feature Impotance
+importances=rf_model.feature_importances_
+features=X.columns
+feat_imp=pd.Series(importances,index=features).sort_values(ascending=False).head(5)
+
+plt.figure(figsize=(10,6))
+sns.barplot(x=feat_imp,y=feat_imp.index,palette="viridis")
+plt.title("Top 5 Important Feature Affecting House Price")
+plt.xlabel("Importance")
+plt.ylabel("Feature")
+plt.show()
+
+#--correlation Heatmap--
+#compute correlation with saleprice
+numeric=df.select_dtypes(include=["float64","int64"])
+corr_matrix = numeric.corr()
+plt.figure(figsize=(12,10))
+sns.heatmap(corr_matrix, cmap='coolwarm', annot=False)
+plt.title('Correlation Heatmap of Features')
+plt.show()
+
+#--Distribution of Prediction Error--
+errors = y_test - y_pred_rf  # Random Forest predictions
+plt.figure(figsize=(8,6))
+sns.histplot(errors, bins=30, kde=True, color='salmon')
+plt.title('Distribution of Prediction Errors')
+plt.xlabel('Prediction Error')
+plt.ylabel('Count')
+plt.show()
